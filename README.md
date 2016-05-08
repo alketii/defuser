@@ -1,2 +1,2 @@
 # defuser
-Minesweeper game
+Minesweeper game, WIP
