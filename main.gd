@@ -2,17 +2,26 @@
 extends Node2D
 
 var button = preload("res://button.tscn")
-var grid_size = Vector2(20,10)
-var mines_total = 50
+var grid_size = Vector2(10,10)
+var level = 0
+var mines_total = global.level * 5
 var grid = []
 var grid_total = 0
 var clicks = 0
 var mines = []
+var game_over = false
+var opened = 0
 
 func _ready():
-	OS.set_window_size(Vector2(grid_size.x*32,grid_size.y*32))
-	OS.set_window_position(Vector2(OS.get_screen_size().x / 2 - grid_size.x*16, OS.get_screen_size().y / 2 - grid_size.y*16))
-	get_tree().set_screen_stretch(2,1,Vector2(Vector2(grid_size.x*32,grid_size.y*32)))
+	if global.level == 10:
+		global.level = 1
+		get_tree().reload_current_scene()
+	get_node("hud/restart").hide()
+	OS.set_window_size(Vector2(grid_size.x*32,grid_size.y*32+32))
+	OS.set_window_position(Vector2(OS.get_screen_size().x / 2 - grid_size.x*16, (OS.get_screen_size().y+32) / 2 - grid_size.y*16))
+	get_tree().set_screen_stretch(2,2,Vector2(Vector2(grid_size.x*32,grid_size.y*32+32)))
+	get_node("hud/mines_left").set_text(str(mines_total))
+	get_node("hud/level").set_text(str(global.level))
 	grid_total = grid_size.x * grid_size.y
 	for y in range(grid_size.y):
 		grid.append([])
@@ -21,7 +30,7 @@ func _ready():
 			var button_new = button.instance()
 			button_new.x = x
 			button_new.y = y
-			button_new.set_pos(Vector2(x*32,y*32))
+			button_new.set_pos(Vector2(x*32,(y*32)+32))
 			add_child(button_new)
 
 func generate(x,y):
@@ -86,9 +95,36 @@ func expand(y,x):
 		cell_show(y+1,x+1) # bottom right
 
 func cell_show(y,x):
-	if not get_node("button_"+str(y)+"_"+str(x)).is_disabled():
-		get_node("button_"+str(y)+"_"+str(x)).set_disabled(true)
-		if grid[y][x] != 0:
-			get_node("button_"+str(y)+"_"+str(x)).set_text(str(grid[y][x]))
+	if not get_node("button_"+str(y)+"_"+str(x)).opened:
+		get_node("button_"+str(y)+"_"+str(x)).opened = true
+		get_node("button_"+str(y)+"_"+str(x)+"/sprites").set_frame(grid[y][x]+3)
+		opened += 1
+		get_node("/root/world").check_win()
 		if grid[y][x] == 0:
 			expand(y,x)
+
+func _on_restart_pressed():
+	if game_over:
+		global.level = 1
+	else:
+		global.level += 1
+	get_tree().reload_current_scene()
+	
+func game_over():
+	game_over = true
+	get_node("hud/restart").set_text("Restart")
+	get_node("hud/restart").show()
+	show_all()
+	
+func check_win():
+	print(grid_total - opened)
+	if grid_total - opened == mines_total and not game_over:
+			get_node("hud/restart").set_text("Next")
+			get_node("hud/restart").show()
+			show_all()
+			
+func show_all():
+	for y in range(grid_size.y):
+		for x in range(grid_size.x):
+			get_node("button_"+str(y)+"_"+str(x)).opened = true
+			get_node("button_"+str(y)+"_"+str(x)+"/sprites").set_frame(grid[y][x]+3)
